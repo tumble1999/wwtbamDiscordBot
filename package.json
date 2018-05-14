@@ -1,0 +1,22 @@
+{
+  "name": "wwtbamdiscordbot",
+  "version": "1.0.0",
+  "description": "whowantstobeamillionare",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tumble1999/wwtbamDiscordBot.git"
+  },
+  "author": "tumble1999",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/tumble1999/wwtbamDiscordBot/issues"
+  },
+  "homepage": "https://github.com/tumble1999/wwtbamDiscordBot#readme",
+  "dependencies": {
+    "webserver-log": "github:tumblenet/webserver-log"
+  }
+}
