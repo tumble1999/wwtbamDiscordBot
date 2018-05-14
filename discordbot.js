@@ -11,12 +11,14 @@ var discordCommands = [];
 var discordPlayers = [];
 var questionchannel = undefined;
 var guessingchannel = undefined;
+var voicechannel = undefined;
 var quizmaster = undefined;
 
 var currentquestion = 0;
 var questionnumber = 15;
+var playing = false;
 var money = [0,100,200,300,500,1000,2000,4000,8000,16000,32000,64000,125000,250000,500000,1000000];
-
+var loosemoney = [0,0,0,0,0,1000,1000,1000,1000,1000,32000,32000,32000,32000,32000,32000];
 
 function registerServer(server){
   discordServers.push(new DiscordServer(server.id,server.name));
@@ -58,15 +60,55 @@ function CheckIfPlayersAreDone() {
   });
 }
 function getTopic() {
-  return "Question " + currentquestion + "/" + questionnumber + " for $" + money[currentquestion];
+  return "Quizmaster: " + quizmaster.toString()  +  " Question " + currentquestion + "/" + questionnumber + " for $" + money[currentquestion];
+}
+function updateTopics() {
+  if (quizmaster == undefined) {
+    return "Please set a quiz master with `!qm`";
+  }
+  if (voicechannel == undefined) {
+    return "Please set a voice channel with `!c v`";
+  }
+  if (questionchannel == undefined) {
+    return "Please set a question channel with `!c q`";
+  }
+  questionchannel.setTopic(getTopic());
+  if (guessingchannel == undefined) {
+    return "Please set a guessing channel with `!c g`";
+  }
+  guessingchannel.setTopic(getTopic());
+  return "Topics updated";
+}
+
+function Start() {
+  if (voicechannel == undefined) {
+    return "Please set a voice channel with `!c v`";
+  }
+  voicechannel.join();
+}
+
+function UpdateMusic() {
+
+}
+
+function Idle(){
+
+}
+
+function NextQuestion() {
+  currentquestion++;
+  UpdateMusic()
 }
 
 function Win(player) {
-
+  player.wins ++;
+  return player.member.toString() + "gets " + money[currentquestion];
 }
 
 function Loose(player) {
-
+  player.loses++;
+  player.score += loosemoney[currentquestion];
+  return player.member.toString() + "walks away with " + loosemoney[currentquestion];
 }
 registerCommand("ping",function (message, param) {
   message.channel.send('pong');
@@ -83,6 +125,7 @@ registerCommand("qm", function (message, param) {
   }
   quizmaster = message.mentions.users.first(1);
   message.channel.send("Quizmaster is set to " + message.mentions.users.first(1).toString());
+  message.channel.send(updateTopics());
 });
 
 registerCommand("me", function (message, param) {
@@ -106,6 +149,22 @@ registerCommand("guess", function (message, param) {
   });
 });
 
+registerCommand("check", function (message, param) {
+  message.channel.send(updateTopics());
+});
+
+registerCommand("start", function (message, param) {
+ message.channel.send(Start());
+});
+
+registerCommand("idle", function (message, param) {
+  message.channel.send(Idle());
+});
+
+registerCommand("nq", function (message, param) {
+  message.channel.send(NextQuestion());
+});
+
 var channelcmd = registerCommand("channel", function (message, param) {
   var type = param.shift(1);
   switch (type) {
@@ -119,13 +178,26 @@ var channelcmd = registerCommand("channel", function (message, param) {
       guessingchannel = message.channel;
       guessingchannel.send("Guessing channel is set to " + guessingchannel);
       break;
+    case "v":
+    case "voice":
+      if (message.member.voicechannel === null) {
+        message.channel.send("Please join a voice channel.");
+      }
+      voicechannel =  message.member.voicechannel;
+      message.channel.send("Voice channel set to " + voicechannel.name);
+    break;
     default:
       message.channel.send("question or guessing");
   }
+  message.channel.send(updateTopics());
 });
 channelcmd.addAlias("c");
 
 registerCommand("answer", function (message, param) {
+  if (questionchannel == undefined) {
+    message.channel.send("Please set a question channel with `!c q`");
+    return;
+  }
   var answer = param.shift(1);
   if (answer == undefined) {
     questionchannel.send("Please specify the correct answer");
@@ -134,6 +206,14 @@ registerCommand("answer", function (message, param) {
   discordPlayers.forEach(function (player) {
     if (!player.final) {
       questionchannel.send(player.member.toString() + " did not answer.")
+      return;
+    }
+    if (player.guess == answer) {
+      questionchannel.send(Win(player));
+      return;
+    }
+    else {
+      questionchannel.send(Loose(player));
       return;
     }
   });
