@@ -238,7 +238,7 @@ function Win(player) {
     }).catch(console.log);
   }
 
-  return "`" + player.member.toString() + "` gets " + money[currentquestion];
+  return player.member.toString() + " gets " + money[currentquestion];
 }
 
 function Loose(player) {
@@ -267,7 +267,7 @@ function Loose(player) {
 
 
 
-  return "`" + player.member.toString() + "` walks away with " + loosemoney[currentquestion];
+  return player.member.toString() + " walks away with " + loosemoney[currentquestion];
 }
 registerCommand("ping",function (message, param) {
   message.channel.send('pong');
@@ -396,7 +396,7 @@ registerCommand("answer", function (message, param) {
       return;
     }
     if (!player.final) {
-      questionchannel.send("`" + player.member.toString() + "` did not answer.");
+      questionchannel.send(player.member.toString() + " did not answer.");
       questionchannel.send(Loose(player));
       return;
     }
