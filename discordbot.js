@@ -184,7 +184,7 @@ function LetsPlay(message) {
   if (voiceconnection == undefined) {
     return "Please set a voice channel with `!c v`";
   }
-  if (currentquestion==questionnumber) {
+  if (currentquestion==questionnumber+1) {
     End();
   }
   clearInterval(questionSongInterval);
@@ -194,7 +194,7 @@ function LetsPlay(message) {
 
   var filename = "lets-play";
   if (currentquestion > 5) {
-    filename = "lp-p" + currentquestion;
+    filename = "lp-q" + currentquestion;
   }
 
   PlaySong(__dirname + "./media/letsplay/" + filename + ".mp3", function () {
@@ -209,18 +209,37 @@ function Idle(){
 
 function Win(player) {
   player.wins ++;
-  return player.member.toString() + "gets " + money[currentquestion];
-  var channel = guild.createChannel(player.member.displayname, 'voice');
+
+  var channel = player.member.guild.createChannel("win-" + player.member.displayname, 'voice');
   player.setVoiceChannel(channel);
+  var filename = "-q" + currentquestion;
+  if (currentquestion < 5) {
+    filename = "-q5";
+  }
 
-
-  player.setVoiceChannel(voiceChannel);
-  channel.delete
+  SFXBot.play(channel,"/win/" + filename + ".mp3",function () {
+    player.setVoiceChannel(voiceChannel);
+    channel.delete()
+  });
+  return player.member.toString() + "gets " + money[currentquestion];
 }
 
 function Loose(player) {
   player.loses++;
   player.score += loosemoney[currentquestion];
+  var channel = player.member.guild.createChannel("lose-" + player.member.displayname, 'voice');
+  player.setVoiceChannel(channel);
+  var filename = "-q" + currentquestion;
+  if (currentquestion < 5) {
+    filename = "-q5";
+  }
+
+  SFXBot.play(channel ,"/loose/" + filename + ".mp3",function () {
+    player.setVoiceChannel(voiceChannel);
+    channel.delete()
+  });
+
+
   return player.member.toString() + "walks away with " + loosemoney[currentquestion];
 }
 registerCommand("ping",function (message, param) {
@@ -321,6 +340,7 @@ var channelcmd = registerCommand("channel", function (message, param) {
       message.member.voiceChannel.join().then(function (connection) {
         voiceconnection = connection;
         message.channel.send("Voice channel set to " + message.member.voiceChannel.name);
+        message.channel.send("Raw voice channel: " + JSON.stringify(message.member.voiceChannel));
       });
     break;
     default:
@@ -342,7 +362,8 @@ registerCommand("answer", function (message, param) {
   }
   discordPlayers.forEach(function (player) {
     if (!player.final) {
-      questionchannel.send(player.member.toString() + " did not answer.")
+      questionchannel.send(player.member.toString() + " did not answer.");
+      questionchannel.send(Loose(player));
       return;
     }
     if (player.guess == answer) {
