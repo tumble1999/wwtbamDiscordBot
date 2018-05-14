@@ -69,7 +69,7 @@ registerCommand("me", function (message, param) {
     message.channel.send("**" + member.toString() + "**\nWins:" + player.wins + "\nScore:" + player.score)
   });
 });
-registerCommand("me", function (message, param) {
+registerCommand("guess", function (message, param) {
   if (param.length !== 0) {
     var member = message.mentions.users.first(1);
   }else{
@@ -84,27 +84,11 @@ registerCommand("channel", function (message, param) {
   var type = param.shift(1);
   switch (type) {
     case "question":
-      if (param.length == 0) {
-        if (questionchannel == undefined) {
-          message.channel.send("Please set a question channel.");
-          return;
-        }
-        message.channel.send("Current question channel is: " + questionchannel.toString());
-        return;
-      }
-      questionchannel = message.mentions.channels.first(1);
+      questionchannel = message.channel;
       message.channel.send("question channel is set to " + questionchannel);
       break;
     case "guessing":
-      if (param.length == 0) {
-        if (guessingchannel == undefined) {
-          message.channel.send("Please set a guessing channel.");
-          return;
-        }
-        message.channel.send("Current guessingchannel channel is: " + guessingchannel.toString());
-        return;
-      }
-      guessingchannel = message.mentions.channels.first(1);
+      guessingchannel = message.channel;
       message.channel.send("Quessing channel is set to " + guessingchannel);
       break;
     default:
@@ -174,7 +158,7 @@ client.on('message', message => {
   });
   if (message.channel == guessingchannel) {
     if (message.content.length == 1) {
-      var user = getPlayer(message.member.id,function (player) {
+      var user = getPlayer(message.member.id, function (player) {
         switch (message.content) {
           case "A":
           case "a":
@@ -197,6 +181,7 @@ client.on('message', message => {
           default:
 
         }
+        message.channel.send(message.member.toString() + " guessed " + player.guess);
       });
     }
   }
