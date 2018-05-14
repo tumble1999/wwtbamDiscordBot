@@ -12,6 +12,8 @@ var discordPlayers = [];
 var questionchannel = undefined;
 var guessingchannel = undefined;
 var voicechannel = undefined;
+var voiceconnection = undefined;
+var voicecurrent = undefined;
 var quizmaster = undefined;
 
 var currentquestion = 0;
@@ -84,7 +86,10 @@ function Start() {
   if (voicechannel == undefined) {
     return "Please set a voice channel with `!c v`";
   }
-  voicechannel.join();
+  voicechannel.join().then(function (connection) {
+    voiceconnection = connection;
+    const starttheme = voiceconnection.playFile('./media/start.mp3');
+  });
 }
 
 function UpdateMusic() {
@@ -163,6 +168,15 @@ registerCommand("idle", function (message, param) {
 
 registerCommand("nq", function (message, param) {
   message.channel.send(NextQuestion());
+});
+
+registerCommand("vol", function (message, param) {
+  var volume = param.shift(1) %100;
+  if (voicecurrent == undefined) {
+    message.channel.send("Nothing is playing ");
+  }
+  voicecurrent.setVolume(volume/100)
+  message.channel.send("Volume set to " + volume + "%");
 });
 
 var channelcmd = registerCommand("channel", function (message, param) {
