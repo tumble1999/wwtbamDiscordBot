@@ -12,7 +12,11 @@ var discordPlayers = [];
 var questionchannel = undefined;
 var guessingchannel = undefined;
 var quizmaster = undefined;
-var question = 0;
+
+var currentquestion = 0;
+var questionnumber = 15;
+var money = [0,100,200,300,500,1000,2000,4000,8000,16000,32000,64000,125000,250000,500000,1000000];
+
 
 function registerServer(server){
   discordServers.push(new DiscordServer(server.id,server.name));
@@ -42,6 +46,28 @@ function getPlayer(userID, callback){
   });
 }
 
+function CheckIfPlayersAreDone() {
+  var playersDone = 0;
+  discordPlayers.forEach(function (player, index,array) {
+    if (player.final) {
+      playersDone++;
+    }
+    if (index == array.length-1) {
+      questionchannel.send("**" + playersDone + "/" + array.length + " have answered.**")
+    }
+  });
+}
+function getTopic() {
+  return "Question " + currentquestion + "/" + questionnumber + " for $" + money[currentquestion];
+}
+
+function Win(player) {
+
+}
+
+function Loose(player) {
+
+}
 registerCommand("ping",function (message, param) {
   message.channel.send('pong');
 });
@@ -80,20 +106,37 @@ registerCommand("guess", function (message, param) {
   });
 });
 
-registerCommand("channel", function (message, param) {
+var channelcmd = registerCommand("channel", function (message, param) {
   var type = param.shift(1);
   switch (type) {
+    case "q":
     case "question":
       questionchannel = message.channel;
-      message.channel.send("question channel is set to " + questionchannel);
+      questionchannel.send("question channel is set to " + questionchannel);
       break;
+    case "g":
     case "guessing":
       guessingchannel = message.channel;
-      message.channel.send("Quessing channel is set to " + guessingchannel);
+      guessingchannel.send("Guessing channel is set to " + guessingchannel);
       break;
     default:
       message.channel.send("question or guessing");
   }
+});
+channelcmd.addAlias("c");
+
+registerCommand("answer", function (message, param) {
+  var answer = param.shift(1);
+  if (answer == undefined) {
+    questionchannel.send("Please specify the correct answer");
+    return;
+  }
+  discordPlayers.forEach(function (player) {
+    if (!player.final) {
+      questionchannel.send(player.member.toString() + " did not answer.")
+      return;
+    }
+  });
 });
 
 function getcommandsString(id){
@@ -157,33 +200,48 @@ client.on('message', message => {
     }
   });
   if (message.channel == guessingchannel) {
-    if (message.content.length == 1) {
-      var user = getPlayer(message.member.id, function (player) {
-        switch (message.content) {
-          case "A":
-          case "a":
-          player.guess = a;
-          break;
-          case "B":
-          case "b":
-          player.guess = b;
-          break;
-          case "C":
-          case "c":
-          player.guess = c;
-          break;
-          case "D":
-          case "D":
-          player.guess = d;
-          break;
-
-          break;
-          default:
-
+    var user = getPlayer(message.member.id, function (player) {
+    if (!player.final) {
+      switch (message.content) {
+        case "A":
+        case "a":
+        player.guess = "a";
+        break;
+        case "B":
+        case "b":
+        player.guess = "b";
+        break;
+        case "C":
+        case "c":
+        player.guess = "c";
+        break;
+        case "D":
+        case "d":
+        player.guess = "d";
+        break;
+        case "Final":
+        case "FINAL":
+        case "yes":
+        case "Yes":
+        case "YES":
+        case "final":
+        if (player.guess) {
+          player.final = true;
+          CheckIfPlayersAreDone();
+        } else {
+          message.channel.send("You need to guess first.")
         }
-        message.channel.send(message.member.toString() + " guessed " + player.guess);
-      });
+        break;
+        default:
+
+      }
     }
+    if (player.final) {
+      message.channel.send(message.member.toString() + " guessed " + player.guess);
+    } else if (player.guess) {
+        message.channel.send(message.member.toString() + "is that your `final` answer? ");
+    }
+  });
   }
 });
 
