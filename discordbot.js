@@ -1,5 +1,6 @@
 const Discord = require('discord.js');
 const client = new Discord.Client();
+const SFXBot = require('./sfx.js');
 
 const DiscordOBJ = require('./discordobj');
 const DiscordServer = DiscordOBJ("server");
@@ -10,13 +11,17 @@ var discordServers = [];
 var discordCommands = [];
 var discordPlayers = [];
 var questionchannel = undefined;
-var guessingchannel = undefined
+var guessingchannel = undefined;
+var voicechannel = undefined;
 var voiceconnection = undefined;
 var voicecurrent = undefined;
 var quizmaster = undefined;
+var songPlaying = false;
+var questionSongInterval = undefined;
 
 var currentquestion = 0;
 var questionnumber = 15;
+var started = false;
 var playing = false;
 var money = [0,100,200,300,500,1000,2000,4000,8000,16000,32000,64000,125000,250000,500000,1000000];
 var loosemoney = [0,0,0,0,0,1000,1000,1000,1000,1000,32000,32000,32000,32000,32000,32000];
@@ -67,7 +72,9 @@ function updateTopics() {
   if (quizmaster == undefined) {
     return "Please set a quiz master with `!qm`";
   }
-  if (voicechannel == undefined) {
+
+      client.user.setPresence({ game: { name: 'for $' + money[currentquestion] }, status: 'online' })
+  if (voiceconnection == undefined) {
     return "Please set a voice channel with `!c v`";
   }
   if (questionchannel == undefined) {
@@ -81,30 +88,134 @@ function updateTopics() {
   return "Topics updated";
 }
 
-function Start() {
-  if (voicechannel == undefined) {
-    return "Please set a voice channel with `!c v`";
+function StopSong() {
+  if (voicecurrent != undefined) {
+    voicecurrent.end();
   }
-  voiceconnection = connection;
-  var starttheme = voiceconnection.playFile('./media/start.mp3');``
+}
+
+function PlaySong(path, callback=function () {}) {
+  if (voicecurrent != undefined) {
+    StopSong();
+  }
+  voicecurrent = voiceconnection.playFile(path);
+  voicecurrent.on("start",function () {
+    songPlaying = true;
+    console.log("Playing " + path + "...");
+  });
+  voicecurrent.on("end",function () {
+    songPlaying = false;
+    callback();
+  });
 }
 
 function UpdateMusic() {
-
+  if (songPlaying) {
+    return;
+  }
+  if (!playing) {
+    return;
+  }
+  if (currentquestion == 0) {
+    PlaySong(__dirname + './media/collect-players.mp3');
+    return;
+  }
+  if (currentquestion < 6) {
+      PlaySong(__dirname + './media/question/q1-5.mp3');
+      return;
+  }
+  if (currentquestion < 16) {
+    PlaySong(__dirname + "./media/question/q" + currentquestion + ".mp3");
+    return;
+  }
 }
 
-function Idle(){
+function questionMusic() {
+  questionSongInterval = setInterval(UpdateMusic, 1000)
+}
 
+function Start() {
+  if (quizmaster == undefined) {
+    return "Please set a quiz master with `!qm`";
+  }
+  if (questionchannel == undefined) {
+    return "Please set a question channel with `!c q`";
+  }
+  if (voiceconnection == undefined) {
+    return "Please set a voice channel with `!c v`";
+  }
+  started = true;
+  currentquestion = 0;
+  playing = true;
+  updateTopics();
+  PlaySong(__dirname + '/media/start.mp3', function () {
+      client.user.setPresence({ game: { name: 'Collecting Players' }, status: 'online' })
+    questionchannel.send(quizmaster.toString() + " now please wait for players to join. then run `!lp`");
+    questionMusic();
+  });
+  return "Starting Game";
+}
+
+function End() {
+  client.user.setPresence({ game: { name: 'WWTBAM' }, status: 'dnd' })
+  clearInterval(questionSongInterval);
+  StopSong();
+  if (voicecurrent != undefined) {
+  voicecurrent.end();
+  }
+
+  if (voiceconnection != undefined) {
+    voiceconnection.disconect();
+  }
 }
 
 function NextQuestion() {
+  questionchannel.send("**Heres the question for $" + money[currentquestion] + " **");
+  console.log("Current Question: " + currentquestion);
+  playing = true;
+  updateTopics();
+  questionMusic();
+}
+
+function LetsPlay(message) {
+  if (!started) {
+    return "Please start the game with `!start`";
+  }
+  if (voiceconnection == undefined) {
+    return "Please set a voice channel with `!c v`";
+  }
+  if (currentquestion==questionnumber) {
+    End();
+  }
+  clearInterval(questionSongInterval);
+  playing = false;
+  StopSong();
   currentquestion++;
-  UpdateMusic()
+
+  var filename = "lets-play";
+  if (currentquestion > 5) {
+    filename = "lp-p" + currentquestion;
+  }
+
+  PlaySong(__dirname + "./media/letsplay/" + filename + ".mp3", function () {
+    NextQuestion();
+  });
+  return "lets play";
+}
+
+function Idle(){
+  playing = false;
 }
 
 function Win(player) {
   player.wins ++;
   return player.member.toString() + "gets " + money[currentquestion];
+  var channel = guild.createChannel(player.member.displayname, 'voice');
+  player.setVoiceChannel(channel);
+
+
+  player.setVoiceChannel(voiceChannel);
+  channel.delete
 }
 
 function Loose(player) {
@@ -162,9 +273,21 @@ registerCommand("start", function (message, param) {
 registerCommand("idle", function (message, param) {
   message.channel.send(Idle());
 });
+registerCommand("lp", function (message, param) {
+  message.channel.send(LetsPlay());
+});
 
-registerCommand("nq", function (message, param) {
-  message.channel.send(NextQuestion());
+registerCommand("stop", function (message, param) {
+  clearInterval(questionSongInterval);
+  End();
+  if (voicecurrent != undefined) {
+  voicecurrent.end();
+  }
+
+  if (voiceconnection != undefined) {
+    voiceconnection.disconect();
+  }
+
 });
 
 registerCommand("vol", function (message, param) {
@@ -191,13 +314,14 @@ var channelcmd = registerCommand("channel", function (message, param) {
       break;
     case "v":
     case "voice":
-      if (message.member.voicechannel === null) {
+      if (message.member.voiceChannel === null) {
         message.channel.send("Please join a voice channel.");
       }
-      message.member.voicechannel.join().then(function (connection) {
+      voicechannel = message.member.voiceChannel;
+      message.member.voiceChannel.join().then(function (connection) {
         voiceconnection = connection;
-        message.channel.send("Voice channel set to " + message.member.voicechannel.name);
-      }
+        message.channel.send("Voice channel set to " + message.member.voiceChannel.name);
+      });
     break;
     default:
       message.channel.send("question or guessing");
@@ -253,6 +377,7 @@ registerCommand("help", function (message, param) {
 
 client.on('ready', () => {
   console.log('I am ready!');
+  client.user.setPresence({ game: { name: 'WWTBAM' }, status: 'invisible' }).then(client.user.setPresence({ game: { name: 'WWTBAM' }, status: 'online' }));
   client.guilds.forEach(guild =>{
     guild.me.setNickname("WhoWantsToBeAMillionare");
     registerServer(guild);
