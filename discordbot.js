@@ -156,29 +156,37 @@ function Start() {
   return "Starting Game";
 }
 
+function resetUsers() {
+  discordPlayers.forEach(function (player) {
+    player.guess = "";
+    player.final = false;
+  });
+}
+
 function End() {
-  client.user.setPresence({ game: { name: 'WWTBAM' }, status: 'idle' })
-  clearInterval(questionSongInterval);
-  StopSong();
-  if (voicecurrent != undefined) {
-  voicecurrent.end();
+  if (!started) {
+    return;
   }
+  started = false;
+  currentquestion = 0;
+  playing = false;
+  PlaySong(__dirname + '/media/end.mp3', function () {
+    resetUsers();
+    client.user.setPresence({ game: { name: 'WWTBAM' }, status: 'idle' })
+    clearInterval(questionSongInterval);
+    StopSong();
+    if (voicecurrent != undefined) {
+    voicecurrent.end();
+    }
+  });
 
-  if (voiceconnection != undefined) {
-  try {
-    voiceconnection.disconect();
-  } catch (e) {
-
-  } finally {
-
-  }
-  }
 }
 
 function NextQuestion() {
   questionchannel.send("**Heres the question for $" + money[currentquestion] + " **");
   console.log("Current Question: " + currentquestion);
   playing = true;
+  resetUsers();
   updateTopics();
   questionMusic();
 }
@@ -209,25 +217,26 @@ function LetsPlay(message) {
   return "lets play";
 }
 
-function Idle(){
-  playing = false;
-}
-
 function Win(player) {
   player.wins ++;
-  // if (player.member.voiceChannel) {
-  //   var channel = player.member.guild.createChannel("win-" + player.member.displayname, 'voice');
-  //   player.member.setVoiceChannel(channel);
-  //   var filename = "-q" + currentquestion;
-  //   if (currentquestion < 5) {
-  //     filename = "-q5";
-  //   }
-  //
-  //   SFXBot.play(channel,"/win/" + filename + ".mp3",function () {
-  //     player.member.setVoiceChannel(voiceChannel);
-  //     channel.delete()
-  //   });
-  // }
+  if (player.member.voiceChannel == voicechannel) {
+
+    player.member.guild.createChannel("lose-" + player.member.id, 'voice').then(function (channel) {
+      player.member.setVoiceChannel(channel).then(function () {
+        var filename = "win-q" + currentquestion;
+        if (currentquestion < 5) {
+          filename = "win-q5";
+        }
+        SFXBot.play(channel ,__dirname + "/media/win/" + filename + ".mp3",() => {
+          player.member.setVoiceChannel(voicechannel).then(function () {
+            channel.delete().then(function () {
+              console.log("channel deleted");
+            }).catch(console.log);
+          }).catch(console.log);
+        });
+      }).catch(console.log);
+    }).catch(console.log);
+  }
 
   return "`" + player.member.toString() + "` gets " + money[currentquestion];
 }
@@ -241,20 +250,18 @@ function Loose(player) {
 
     player.member.guild.createChannel("lose-" + player.member.id, 'voice').then(function (channel) {
       player.member.setVoiceChannel(channel).then(function () {
-        var filename = "-q" + currentquestion;
-        if (currentquestion < 5) {
-          filename = "-q5";
+        var filename = "lose-q" + currentquestion;
+        if (currentquestion < 6) {
+          filename = "lose-q6";
         }
-        SFXBot.play(channel ,__dirname + "/media/lose/" + filename + ".mp3",function () {
-          channel.delete().then(function () {
-            console.log("channel deleted");
+        SFXBot.play(channel ,__dirname + "/media/lose/" + filename + ".mp3",() => {
+          player.member.setVoiceChannel(voicechannel).then(function () {
+            channel.delete().then(function () {
+              console.log("channel deleted");
+            }).catch(console.log);
           }).catch(console.log);
         });
-      }).catch(function () {
-        channel.delete().then(function () {
-          console.log("channel deleted");
-        }).catch(console.log);
-      });
+      }).catch(console.log);
     }).catch(console.log);
   }
 
@@ -309,23 +316,13 @@ registerCommand("start", function (message, param) {
  message.channel.send(Start());
 });
 
-registerCommand("idle", function (message, param) {
-  message.channel.send(Idle());
-});
 registerCommand("lp", function (message, param) {
   message.channel.send(LetsPlay());
 });
 
-registerCommand("stop", function (message, param) {
+registerCommand("end", function (message, param) {
   clearInterval(questionSongInterval);
   End();
-  if (voicecurrent != undefined) {
-  voicecurrent.end();
-  }
-
-  if (voiceconnection != undefined) {
-    voiceconnection.disconect();
-  }
 
 });
 
@@ -353,7 +350,7 @@ var channelcmd = registerCommand("channel", function (message, param) {
       break;
     case "v":
     case "voice":
-      if (message.member.voiceChannel === null) {
+      if (message.member.voiceChannel ===undefined) {
         message.channel.send("Please join a voice channel.");
       }
       voicechannel = message.member.voiceChannel;
@@ -440,7 +437,7 @@ client.on('ready', () => {
     guild.me.setNickname("WhoWantsToBeAMillionare");
     registerServer(guild);
     guild.members.forEach(member =>{
-      if (member.id == client.user.id | member.id == SFXBot.client.user.id) {
+      if (member.id == client.user.id || member.id == "445655382954868737") {
         return;
       }
       registerPlayer(member);
