@@ -10,8 +10,7 @@ var discordServers = [];
 var discordCommands = [];
 var discordPlayers = [];
 var questionchannel = undefined;
-var guessingchannel = undefined;
-var voicechannel = undefined;
+var guessingchannel = undefined
 var voiceconnection = undefined;
 var voicecurrent = undefined;
 var quizmaster = undefined;
@@ -86,10 +85,8 @@ function Start() {
   if (voicechannel == undefined) {
     return "Please set a voice channel with `!c v`";
   }
-  voicechannel.join().then(function (connection) {
-    voiceconnection = connection;
-    const starttheme = voiceconnection.playFile('./media/start.mp3');
-  });
+  voiceconnection = connection;
+  var starttheme = voiceconnection.playFile('./media/start.mp3');``
 }
 
 function UpdateMusic() {
@@ -197,8 +194,10 @@ var channelcmd = registerCommand("channel", function (message, param) {
       if (message.member.voicechannel === null) {
         message.channel.send("Please join a voice channel.");
       }
-      voicechannel =  message.member.voicechannel;
-      message.channel.send("Voice channel set to " + voicechannel.name);
+      message.member.voicechannel.join().then(function (connection) {
+        voiceconnection = connection;
+        message.channel.send("Voice channel set to " + message.member.voicechannel.name);
+      }
     break;
     default:
       message.channel.send("question or guessing");
