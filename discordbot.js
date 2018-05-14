@@ -69,6 +69,16 @@ registerCommand("me", function (message, param) {
     message.channel.send("**" + member.toString() + "**\nWins:" + player.wins + "\nScore:" + player.score)
   });
 });
+registerCommand("me", function (message, param) {
+  if (param.length !== 0) {
+    var member = message.mentions.users.first(1);
+  }else{
+    var member = message.member;
+  }
+  var player = getPlayer(message.member.id,function (player) {
+    message.channel.send("**" + member.toString() + "**\nGuess:" + player.guess);
+  });
+});
 
 registerCommand("channel", function (message, param) {
   var type = param.shift(1);
@@ -162,8 +172,33 @@ client.on('message', message => {
       });
     }
   });
-  if (message.channe;) {
+  if (message.channel == guessingchannel) {
+    if (message.content.length == 1) {
+      var user = getPlayer(message.member.id,function (player) {
+        switch (message.content) {
+          case "A":
+          case "a":
+          player.guess = a;
+          break;
+          case "B":
+          case "b":
+          player.guess = b;
+          break;
+          case "C":
+          case "c":
+          player.guess = c;
+          break;
+          case "D":
+          case "D":
+          player.guess = d;
+          break;
 
+          break;
+          default:
+
+        }
+      });
+    }
   }
 });
 
