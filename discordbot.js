@@ -165,7 +165,13 @@ function End() {
   }
 
   if (voiceconnection != undefined) {
+  try {
     voiceconnection.disconect();
+  } catch (e) {
+
+  } finally {
+
+  }
   }
 }
 
@@ -209,35 +215,43 @@ function Idle(){
 
 function Win(player) {
   player.wins ++;
+  // if (player.member.voiceChannel) {
+  //   var channel = player.member.guild.createChannel("win-" + player.member.displayname, 'voice');
+  //   player.member.setVoiceChannel(channel);
+  //   var filename = "-q" + currentquestion;
+  //   if (currentquestion < 5) {
+  //     filename = "-q5";
+  //   }
+  //
+  //   SFXBot.play(channel,"/win/" + filename + ".mp3",function () {
+  //     player.member.setVoiceChannel(voiceChannel);
+  //     channel.delete()
+  //   });
+  // }
 
-  var channel = player.member.guild.createChannel("win-" + player.member.displayname, 'voice');
-  player.setVoiceChannel(channel);
-  var filename = "-q" + currentquestion;
-  if (currentquestion < 5) {
-    filename = "-q5";
-  }
-
-  SFXBot.play(channel,"/win/" + filename + ".mp3",function () {
-    player.setVoiceChannel(voiceChannel);
-    channel.delete()
-  });
   return player.member.toString() + "gets " + money[currentquestion];
 }
 
 function Loose(player) {
   player.loses++;
   player.score += loosemoney[currentquestion];
-  var channel = player.member.guild.createChannel("lose-" + player.member.displayname, 'voice');
-  player.setVoiceChannel(channel);
-  var filename = "-q" + currentquestion;
-  if (currentquestion < 5) {
-    filename = "-q5";
-  }
 
-  SFXBot.play(channel ,"/loose/" + filename + ".mp3",function () {
-    player.setVoiceChannel(voiceChannel);
-    channel.delete()
-  });
+
+  // if (player.member.voiceChannel) {
+  //
+  //   var channel = player.member.guild.createChannel("lose-" + player.member.displayname, 'voice');
+  //   player.member.setVoiceChannel(channel);
+  //   var filename = "-q" + currentquestion;
+  //   if (currentquestion < 5) {
+  //     filename = "-q5";
+  //   }
+  //
+  //   SFXBot.play(channel ,"/loose/" + filename + ".mp3",function () {
+  //     player.setVoiceChannel(voiceChannel);
+  //     channel.delete()
+  //   });
+  // }
+
 
 
   return player.member.toString() + "walks away with " + loosemoney[currentquestion];
@@ -360,6 +374,17 @@ registerCommand("answer", function (message, param) {
     questionchannel.send("Please specify the correct answer");
     return;
   }
+  clearInterval(questionSongInterval);
+  playing = false;
+  StopSong();
+
+    var filename = "lp-q" + currentquestion;
+    if (currentquestion < 6) {
+      filename = "lets-play";
+    }
+
+  PlaySong(__dirname + "./media/fa/" + filename + ".mp3")
+
   discordPlayers.forEach(function (player) {
     if (!player.final) {
       questionchannel.send(player.member.toString() + " did not answer.");
