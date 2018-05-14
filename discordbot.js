@@ -148,8 +148,8 @@ function Start() {
   currentquestion = 0;
   playing = true;
   updateTopics();
+  client.user.setPresence({ game: { name: 'Collecting Players' }, status: 'idle' })
   PlaySong(__dirname + '/media/start.mp3', function () {
-      client.user.setPresence({ game: { name: 'Collecting Players' }, status: 'online' })
     questionchannel.send(quizmaster.toString() + " now please wait for players to join. then run `!lp`");
     questionMusic();
   });
@@ -157,7 +157,7 @@ function Start() {
 }
 
 function End() {
-  client.user.setPresence({ game: { name: 'WWTBAM' }, status: 'dnd' })
+  client.user.setPresence({ game: { name: 'WWTBAM' }, status: 'idle' })
   clearInterval(questionSongInterval);
   StopSong();
   if (voicecurrent != undefined) {
@@ -229,7 +229,7 @@ function Win(player) {
   //   });
   // }
 
-  return player.member.toString() + "gets " + money[currentquestion];
+  return "`" + player.member.toString() + "` gets " + money[currentquestion];
 }
 
 function Loose(player) {
@@ -237,24 +237,35 @@ function Loose(player) {
   player.score += loosemoney[currentquestion];
 
 
-  // if (player.member.voiceChannel) {
-  //
-  //   var channel = player.member.guild.createChannel("lose-" + player.member.displayname, 'voice');
-  //   player.member.setVoiceChannel(channel);
-  //   var filename = "-q" + currentquestion;
-  //   if (currentquestion < 5) {
-  //     filename = "-q5";
-  //   }
-  //
-  //   SFXBot.play(channel ,"/loose/" + filename + ".mp3",function () {
-  //     player.setVoiceChannel(voiceChannel);
-  //     channel.delete()
-  //   });
-  // }
+  if (player.member.voiceChannel == voicechannel) {
+
+    var channel = player.member.guild.createChannel("lose-" + player.member.id, 'voice').then(function () {
+      player.member.setVoiceChannel(channel).then(function () {
+        var filename = "-q" + currentquestion;
+        if (currentquestion < 5) {
+          filename = "-q5";
+        }
+
+        SFXBot.play(channel ,__dirname + "/lose/" + filename + ".mp3",function () {
+          player.setVoiceChannel(voiceChannel).then(function () {
+            channel.delete().then(function () {
+              console.log("channel deleted");
+            }).catch(console.log);
+          }).catch(console.log);
+        });
+      }).catch(function () {
+        channel.delete().then(function () {
+          console.log("channel deleted");
+        }).catch(console.log);
+      });
+
+    }).catch(console.log);
+
+  }
 
 
 
-  return player.member.toString() + "walks away with " + loosemoney[currentquestion];
+  return "`" + player.member.toString() + "` walks away with " + loosemoney[currentquestion];
 }
 registerCommand("ping",function (message, param) {
   message.channel.send('pong');
@@ -378,16 +389,19 @@ registerCommand("answer", function (message, param) {
   playing = false;
   StopSong();
 
-    var filename = "lp-q" + currentquestion;
-    if (currentquestion < 6) {
-      filename = "lets-play";
-    }
+  var filename = "fa-q" + currentquestion;
+  if (currentquestion < 6) {
+    filename = "fa-q6";
+  }
+  if (voiceconnection != undefined) {
+    PlaySong(__dirname + "./media/fa/" + filename + ".mp3")
+  }
 
-  PlaySong(__dirname + "./media/fa/" + filename + ".mp3")
+  client.user.setPresence({ game: { name: 'Tallying answers' }, status: 'dnd' })
 
   discordPlayers.forEach(function (player) {
     if (!player.final) {
-      questionchannel.send(player.member.toString() + " did not answer.");
+      questionchannel.send("`" + player.member.toString() + "` did not answer.");
       questionchannel.send(Loose(player));
       return;
     }
@@ -423,7 +437,7 @@ registerCommand("help", function (message, param) {
 
 client.on('ready', () => {
   console.log('I am ready!');
-  client.user.setPresence({ game: { name: 'WWTBAM' }, status: 'invisible' }).then(client.user.setPresence({ game: { name: 'WWTBAM' }, status: 'online' }));
+  client.user.setPresence({ game: { name: 'WWTBAM' }, status: 'invisible' });
   client.guilds.forEach(guild =>{
     guild.me.setNickname("WhoWantsToBeAMillionare");
     registerServer(guild);
@@ -431,6 +445,7 @@ client.on('ready', () => {
       registerPlayer(member);
     });
   });
+  client.user.setPresence({ game: { name: 'WWTBAM' }, status: 'idle' });
 });
 
 client.on('message', message => {

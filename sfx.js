@@ -3,13 +3,14 @@ const client = new Discord.Client();
 
 module.exports = {
   play:function functionName(channel, filename,callback) {
+    console.log("hi");
     channel.join().then(function (connection) {
-      const dispatcher = connection.playFile(__dirname + "./media/" + filename + ".mp3");
+      const dispatcher = connection.playFile(filename);
       dispatcher.on("end", function () {
         connection.disconect();
         callback();
       })
-    });
+    }).catch(console.log);
   }
 }
 
