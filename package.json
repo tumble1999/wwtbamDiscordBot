@@ -17,6 +17,7 @@
   },
   "homepage": "https://github.com/tumble1999/wwtbamDiscordBot#readme",
   "dependencies": {
+    "discord.js": "^11.3.2",
     "webserver-log": "github:tumblenet/webserver-log"
   }
 }
