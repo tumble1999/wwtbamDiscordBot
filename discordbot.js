@@ -239,18 +239,15 @@ function Loose(player) {
 
   if (player.member.voiceChannel == voicechannel) {
 
-    var channel = player.member.guild.createChannel("lose-" + player.member.id, 'voice').then(function () {
+    player.member.guild.createChannel("lose-" + player.member.id, 'voice').then(function (channel) {
       player.member.setVoiceChannel(channel).then(function () {
         var filename = "-q" + currentquestion;
         if (currentquestion < 5) {
           filename = "-q5";
         }
-
-        SFXBot.play(channel ,__dirname + "/lose/" + filename + ".mp3",function () {
-          player.setVoiceChannel(voiceChannel).then(function () {
-            channel.delete().then(function () {
-              console.log("channel deleted");
-            }).catch(console.log);
+        SFXBot.play(channel ,__dirname + "/media/lose/" + filename + ".mp3",function () {
+          channel.delete().then(function () {
+            console.log("channel deleted");
           }).catch(console.log);
         });
       }).catch(function () {
@@ -258,9 +255,7 @@ function Loose(player) {
           console.log("channel deleted");
         }).catch(console.log);
       });
-
     }).catch(console.log);
-
   }
 
 
@@ -400,6 +395,9 @@ registerCommand("answer", function (message, param) {
   client.user.setPresence({ game: { name: 'Tallying answers' }, status: 'dnd' })
 
   discordPlayers.forEach(function (player) {
+    if (player.member.voiceChannel != voicechannel) {
+      return;
+    }
     if (!player.final) {
       questionchannel.send("`" + player.member.toString() + "` did not answer.");
       questionchannel.send(Loose(player));
@@ -442,6 +440,9 @@ client.on('ready', () => {
     guild.me.setNickname("WhoWantsToBeAMillionare");
     registerServer(guild);
     guild.members.forEach(member =>{
+      if (member.id == client.user.id | member.id == SFXBot.client.user.id) {
+        return;
+      }
       registerPlayer(member);
     });
   });
