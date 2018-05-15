@@ -172,9 +172,14 @@ function End() {
   started = false;
   currentquestion = 0;
   playing = false;
+
+  discordPlayers.forEach(function (player) {
+    player.score += player.gamescore;
+    player.gamescore = 0;
+  });
   PlaySong(__dirname + '/media/end.mp3', function () {
     resetUsers();
-    client.user.setPresence({ game: { name: 'WWTBAM' }, status: 'idle' })
+    client.user.setPresence({ game: { name: '!help' }, status: 'idle' })
     clearInterval(questionSongInterval);
     StopSong();
     if (voicecurrent != undefined) {
@@ -221,6 +226,7 @@ function LetsPlay(message) {
 
 function Win(player) {
   player.wins ++;
+  player.gamescore = money[currentquestion];
   if (player.member.voiceChannel == voicechannel) {
 
     player.member.guild.createChannel("lose-" + player.member.id, 'voice').then(function (channel) {
@@ -245,7 +251,7 @@ function Win(player) {
 
 function Loose(player) {
   player.loses++;
-  player.score += loosemoney[currentquestion];
+  player.gamescore = loosemoney[currentquestion];
 
 
   if (player.member.voiceChannel == voicechannel) {
@@ -278,7 +284,7 @@ registerCommand("ping",function (message, param) {
 registerCommand("qm", function (message, param) {
   if (param.length == 0) {
     if (quizmaster == undefined) {
-      message.channel.send("Please set a quizmaster.");
+      message.channel.send("Please set a quizmaster. `!qm [mention]`");
       return;
     }
     message.channel.send("Current Quizmaster is: " + quizmaster.toString());
@@ -296,7 +302,7 @@ registerCommand("me", function (message, param) {
     var member = message.member;
   }
   var player = getPlayer(message.member.id,function (player) {
-    message.channel.send("**" + member.toString() + "**\nWins:" + player.wins + "\nScore:" + player.score)
+    message.channel.send("**" + member.toString() + "**\nWins:" + player.wins + "\nScore:" + player.score + (started ? ("\nCurrentGameScore: " + player.gamescore):""))
   });
 });
 registerCommand("guess", function (message, param) {
@@ -445,7 +451,7 @@ client.on('ready', () => {
       registerPlayer(member);
     });
   });
-  client.user.setPresence({ game: { name: 'WWTBAM' }, status: 'idle' });
+  client.user.setPresence({ game: { name: '!help' }, status: 'idle' });
 });
 
 client.on('message', message => {

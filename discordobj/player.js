@@ -5,6 +5,7 @@ function Player(member) {
   this.score = 0;
   this.guess = "";
   this.final = false;
+  this.gamescore = 0;
 }
 
 module.exports = Player;
