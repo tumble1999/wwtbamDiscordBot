@@ -144,6 +144,7 @@ function Start() {
   if (voiceconnection == undefined) {
     return "Please set a voice channel with `!c v`";
   }
+  client.user.setPresence({ game: { name: 'Starting' }, status: 'dnd' })
   started = true;
   currentquestion = 0;
   playing = true;
@@ -164,6 +165,7 @@ function resetUsers() {
 }
 
 function End() {
+  client.user.setPresence({ game: { name: 'Ending' }, status: 'dnd' })
   if (!started) {
     return;
   }
@@ -308,7 +310,7 @@ registerCommand("guess", function (message, param) {
   });
 });
 
-registerCommand("check", function (message, param) {
+registerCommand("setup", function (message, param) {
   message.channel.send(updateTopics());
 });
 
