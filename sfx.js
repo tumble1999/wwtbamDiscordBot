@@ -32,6 +32,7 @@ client.on('ready', () => {
     guild.me.setNickname("SFX");
     registerServer(guild);
   });
+  module.exports.setAvatar = client.user.setAvatar;
 
 });
 const token = process.env.DISCORD_SFX_TOKEN || require('./config/token.js').sfxtoken;

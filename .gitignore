@@ -60,3 +60,6 @@ typings/
 
 # secret config
 /config
+
+#data
+/data

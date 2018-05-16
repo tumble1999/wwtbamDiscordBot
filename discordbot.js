@@ -1,11 +1,14 @@
 const Discord = require('discord.js');
 const client = new Discord.Client();
 const SFXBot = require('./sfx.js');
+const Saving = require('./saving.js');
 
 const DiscordOBJ = require('./discordobj');
 const DiscordServer = DiscordOBJ("server");
 const DiscordCommand = DiscordOBJ("command");
 const DiscordPlayer = DiscordOBJ("player");
+
+const GUILD_ID = "445354780873850881";
 
 var discordServers = [];
 var discordCommands = [];
@@ -26,31 +29,206 @@ var playing = false;
 var money = [0,100,200,300,500,1000,2000,4000,8000,16000,32000,64000,125000,250000,500000,1000000];
 var loosemoney = [0,0,0,0,0,1000,1000,1000,1000,1000,32000,32000,32000,32000,32000,32000];
 
+var quizmasteronly = [];
+var serveradmins = [];
+var serveradminonly = [];
+
+// setInterval(function () {
+//   console.log("SAVING DATA...");
+//   Save();
+// },10000)
+
 function registerServer(server){
-  discordServers.push(new DiscordServer(server.id,server.name));
+  console.log("Registrating [SERVER]: \"" + server.name + "\" (" + server.id + ")");
+  discordServers.push(new DiscordServer(server.id,server.name,server));
 }
 function registerCommand(alias,cmdevent){
   var command = new DiscordCommand(alias,cmdevent);
+  console.log("Registrating [COMMAND]: \"" + command.alias[0] + "\"");
   discordCommands.push(command);
   return command;
 }
 
 function registerPlayer(member){
-  discordPlayers.push(new DiscordPlayer(member));
+  if (isPlayerRegistered(member)) {
+    return;
+  }
+  while (!isPlayerRegistered(member)) {
+    var player = new DiscordPlayer(member)
+    console.log("Registrating [PLAYER]: \"" + member.displayName + "\" (" + member.id + ")");
+    discordPlayers.push(player);
+  }
+}
+
+function isPlayerRegistered(member) {
+  var found = false;
+  if (discordPlayers == undefined) {
+    return false;
+  }
+  for(var i = 0; i < discordPlayers.length; i++) {
+      if (discordPlayers[i].member.id == member.id) {
+          found = true;
+          break;
+      }
+  }
+  return found;
 }
 
 function getServer(guildID, callback){
   discordServers.forEach(server =>{
-    if (guildID===server.id) {
+    if (guildID===server.guild.id) {
       callback(server);
     }
   });
 }
-function getPlayer(userID, callback){
+function getPlayer(member, callback) {
+  if (!isPlayerRegistered(member)) {
+    return;
+  }
   discordPlayers.forEach(user => {
-    if (userID===user.member.id) {
+    if (member.id===user.member.id) {
       callback(user);
+      return;
     }
+  });
+}
+
+function getMemberFromID(guildid,memberid, callback) {
+  getServer(guildid, function (server) {
+    server.guild.members.forEach(function (member) {
+      if (member.id == memberid) {
+        callback(member);
+      }
+    })
+  });
+}
+function getChannelFromID(guildid,channelid, callback) {
+  getServer(guildid, function (server) {
+    server.guild.channels.forEach(function (channel) {
+      if (channel.id == channelid) {
+        callback(channel);
+      }
+    })
+  });
+}
+
+function Load() {
+  Saving.LoadPlayerData(function (data) {
+    getMemberFromID(GUILD_ID, data.quizmaster, function (member) {
+      quizmaster = member;
+    });
+    var players = [];
+    if (data.playerdata == undefined) {
+      return;
+    }
+    data.playerdata.forEach(function (player,index,array) {
+      var tmpplayer = player;
+
+      getMemberFromID(GUILD_ID,tmpplayer.member,function (member) {
+        tmpplayer.member = member;
+        players.push(tmpplayer);
+      });
+
+      if (index == array.length-1) {
+        discordPlayers = players
+      }
+    });
+  });
+  Saving.LoadChannelData(function (data) {
+    getChannelFromID(GUILD_ID, data.question,function (channel) {
+      questionchannel = channel;
+    });
+    getChannelFromID(GUILD_ID, data.guessing,function (channel) {
+      guessingchannel = data.guessing;
+    });
+    getChannelFromID(GUILD_ID, data.voice,function (channel) {
+      voicechannel = data.voice;
+    });
+  });
+}
+
+function Save() {
+  var saving = {
+    quizmaster: quizmaster,
+    playerdata: discordPlayers
+  }
+  var id = "";
+  if (saving.quizmaster != undefined) {
+    id = saving.quizmaster.id || "";
+    saving.quizmaster = id;
+  }
+  id = "";
+
+  for (var i = 0; i < saving.playerdata.length; i++) {
+    if (saving.playerdata[i].member == undefined) {
+      continue;
+    }
+    id = "";
+    id = saving.playerdata[i].member.id || ""
+    saving.playerdata[i].member = id ;
+  }
+  Saving.SavePlayerData(saving);
+
+  saving = {
+    question: questionchannel,
+    guessing: guessingchannel,
+    voice: voicechannel
+  }
+
+  id = "";
+  if (questionchannel != undefined) {
+    id = questionchannel.id || "";
+    saving.questionchannel = id;
+  }
+  id = "";
+  if (guessingchannel != undefined) {
+    id = guessingchannel.id || "";
+    saving.guessingchannel = id;
+  }
+  id = "";
+  if (voicechannel != undefined) {
+    id = voicechannel.id || "";
+    saving.voicechannel = id;
+  }
+
+  Saving.SaveChannelData(saving);
+}
+
+function UpdateAdmins() {
+  serveradmins = [];
+  client.guilds.forEach(guild =>{
+    guild.members.forEach(member =>{
+      if (member.hasPermission(Discord.Permissions.FLAGS.ADMINISTRATOR,undefined,true,true)) {
+        serveradmins.push(member)
+      }
+    });
+  });
+}
+
+function UpdatePermissions() {
+  UpdateAdmins();
+  serveradminonly.forEach(function (command) {
+    command.users = [];
+      command.whitelist = true;
+    serveradmins.forEach(function (serveradmin) {
+      if (command.users.includes(serveradmin)) {
+        return;
+      }
+      command.addUser(serveradmin);
+    })
+  });
+  quizmasteronly.forEach(function (command) {
+    command.users = []
+    command.whitelist = true
+    if (quizmaster != undefined) {
+      command.addUser(quizmaster)
+    }
+    serveradmins.forEach(function (serveradmin) {
+      if (command.users.includes(serveradmin)) {
+        return;
+      }
+      command.addUser(serveradmin);
+    })
   });
 }
 
@@ -135,6 +313,9 @@ function questionMusic() {
 }
 
 function Start() {
+  if (started) {
+    return "Already started";
+  }
   if (quizmaster == undefined) {
     return "Please set a quiz master with `!qm`";
   }
@@ -277,11 +458,16 @@ function Loose(player) {
 
   return player.member.toString() + " walks away with " + loosemoney[currentquestion];
 }
-registerCommand("ping",function (message, param) {
-  message.channel.send('pong');
-});
+serveradminonly.push(registerCommand("ping",function (message, param) {
+  message.reply('pong');
+}));
 
-registerCommand("qm", function (message, param) {
+// serveradminonly.push(registerCommand("save",function (message, param) {
+//   Save();
+//   message.reply("Data saved");
+// }));
+
+serveradminonly.push(registerCommand("qm", function (message, param) {
   if (param.length == 0) {
     if (quizmaster == undefined) {
       message.channel.send("Please set a quizmaster. `!qm [mention]`");
@@ -293,7 +479,8 @@ registerCommand("qm", function (message, param) {
   quizmaster = message.mentions.users.first(1);
   message.channel.send("Quizmaster is set to " + message.mentions.users.first(1).toString());
   message.channel.send(updateTopics());
-});
+  UpdatePermissions();
+}));
 
 registerCommand("me", function (message, param) {
   if (param.length !== 0) {
@@ -301,7 +488,7 @@ registerCommand("me", function (message, param) {
   }else{
     var member = message.member;
   }
-  var player = getPlayer(message.member.id,function (player) {
+  var player = getPlayer(message.member,function (player) {
     message.channel.send("**" + member.toString() + "**\nWins:" + player.wins + "\nScore:" + player.score + (started ? ("\nCurrentGameScore: " + player.gamescore):""))
   });
 });
@@ -311,37 +498,44 @@ registerCommand("guess", function (message, param) {
   }else{
     var member = message.member;
   }
-  var player = getPlayer(message.member.id,function (player) {
+  var player = getPlayer(message.member,function (player) {
     message.channel.send("**" + member.toString() + "**\nGuess:" + player.guess);
   });
 });
 
-registerCommand("setup", function (message, param) {
+quizmasteronly.push(registerCommand("setup", function (message, param) {
   message.channel.send(updateTopics());
-});
+}));
 
-registerCommand("start", function (message, param) {
+
+quizmasteronly.push(registerCommand("start", function (message, param) {
  message.channel.send(Start());
-});
+}));
 
-registerCommand("lp", function (message, param) {
+
+quizmasteronly.push(registerCommand("tmp", function (message, param) {
+  var tmp = discordPlayers;
+  message.channel.send(JSON.stringify(discordPlayers, null, '\t'));
+}));
+
+quizmasteronly.push(registerCommand("lp", function (message, param) {
   message.channel.send(LetsPlay());
-});
+}));
 
-registerCommand("end", function (message, param) {
+quizmasteronly.push(registerCommand("end", function (message, param) {
   clearInterval(questionSongInterval);
   End();
 
-});
+}));
 
-registerCommand("vol", function (message, param) {
+serveradminonly.push(registerCommand("vol", function (message, param) {
   var volume = param.shift(1) %100;
   if (voicecurrent == undefined) {
     message.channel.send("Nothing is playing ");
   }
   voicecurrent.setVolume(volume/100)
   message.channel.send("Volume set to " + volume + "%");
-});
+}));
 
 var channelcmd = registerCommand("channel", function (message, param) {
   var type = param.shift(1);
@@ -374,8 +568,9 @@ var channelcmd = registerCommand("channel", function (message, param) {
   message.channel.send(updateTopics());
 });
 channelcmd.addAlias("c");
+quizmasteronly.push(channelcmd);
 
-registerCommand("answer", function (message, param) {
+quizmasteronly.push(registerCommand("answer", function (message, param) {
   if (questionchannel == undefined) {
     message.channel.send("Please set a question channel with `!c q`");
     return;
@@ -403,6 +598,9 @@ registerCommand("answer", function (message, param) {
     if (player.member.voiceChannel != voicechannel) {
       return;
     }
+    if (player.member.id == quizmaster.id) {
+      return;
+    }
     if (!player.final) {
       questionchannel.send(player.member.toString() + " did not answer.");
       questionchannel.send(Loose(player));
@@ -417,39 +615,73 @@ registerCommand("answer", function (message, param) {
       return;
     }
   });
-});
+}));
 
-function getcommandsString(id){
+function getcommandsString(id,member){
   if (id == discordCommands.length) {
     return "";
   }
-  return " * " + discordCommands[id].alias[0] + "\n"  + getcommandsString(id+1);
+  if (discordCommands[id].whitelist && !discordCommands[id].users.includes(member)) {
+    return getcommandsString(id+1,member);
+  }
+  return "\n"  + " * " + discordCommands[id].alias[0] + getcommandsString(id+1,member);
 }
 
 function getusersString(id){
   if (id == discordPlayers.length) {
     return "";
   }
-  return " * " + discordPlayers[id].alias + "\n"  + getcommandsString(id+1);
+  return "\n" + " * " + discordPlayers[id].alias + getusersString(id+1);
 }
 
 registerCommand("help", function (message, param) {
-  message.channel.send("**Commands**");
-  message.channel.send("```" + getcommandsString(0) + "```");
+  UpdatePermissions();
+  message.reply("\n**Commands**\n```" + getcommandsString(0, message.member) + "```");
 });
+
+registerCommand("avatar", function (message, param) {
+  var avatar = param.shift();
+  if (avatar == undefined) {
+    message.reply("Specify url.")
+    return;
+  }
+  client.user.setAvatar(avatar).then((user) =>{
+    message.reply("Avatar set");
+  }).catch(message.reply);
+  SFXBot.setAvatar(avatar).then((user)=> {
+    message.reply("Avatar set");
+  }).catch(message.reply);
+});
+
+serveradminonly.push(registerCommand("admins", function (message, param) {
+  UpdateAdmins();
+  function getadminsString(id){
+    if (id == serveradmins.length) {
+      return "";
+    }
+    return "\n" + " * " + serveradmins[id].displayName + getadminsString(id+1);
+  }
+
+  message.reply("\n**Admins**\n```" + getadminsString(0, message.member) + "```");
+}));
 
 client.on('ready', () => {
   console.log('I am ready!');
   client.user.setPresence({ game: { name: 'WWTBAM' }, status: 'invisible' });
+  //Load();
   client.guilds.forEach(guild =>{
     guild.me.setNickname("WhoWantsToBeAMillionare");
     registerServer(guild);
     guild.members.forEach(member =>{
+      if (member.hasPermission(Discord.Permissions.FLAGS.ADMINISTRATOR,undefined,true,true)) {
+        serveradmins.push(member)
+      }
       if (member.id == client.user.id || member.id == "445655382954868737") {
         return;
       }
       registerPlayer(member);
     });
+    UpdatePermissions();
   });
   client.user.setPresence({ game: { name: '!help' }, status: 'idle' });
 });
@@ -471,12 +703,25 @@ client.on('message', message => {
           message.channel.send("Invalid command: `" + command + "`")
         }
       }
+      function commandExecuter(command,message) {
+        var output = false;
+        try {
+          output = command.execute(message);
+        } catch (e) {
+          output = false;
+          message.reply(e);
+        } finally {
+
+        }
+        return output;
+      }
+
       var itemsProcessed = 0;
       discordCommands.forEach((command,index,array) => {
         if (commandWorked) {
           return;
         }
-        commandWorked = commandWorked || command.execute(message);
+        commandWorked = commandWorked || commandExecuter(command,message);
         itemsProcessed++;
         if(itemsProcessed === array.length) {
           callback(message.content);
@@ -485,7 +730,7 @@ client.on('message', message => {
     }
   });
   if (message.channel == guessingchannel) {
-    var user = getPlayer(message.member.id, function (player) {
+    var user = getPlayer(message.member, function (player) {
     if (!player.final) {
       switch (message.content) {
         case "A":
