@@ -1,6 +1,6 @@
 const request = require('request');
 
-var url = "https://opentdb.com/api.php?amount=15&type=multiple";
+var url = "https://opentdb.com/api.php?amount=16&type=multiple";
 var questions = [];
 var question = "";
 var choices = "";
@@ -39,7 +39,7 @@ function LoadQuestion(id) {
   ShuffleAnswers(options);
   choices = options;
 
-  answer = choiceLabels[choice.indexOf(questionData.correct_answer)];
+  answer = choiceLabels[choices.indexOf(questionData.correct_answer)];
 }
 
 function GetQuestion() {

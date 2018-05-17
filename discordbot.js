@@ -374,7 +374,7 @@ function End() {
 }
 
 function NextQuestion() {
-  Questions.LoadQuestion();
+  Questions.LoadQuestion(currentquestion-1);
   questionchannel.send("**Heres the question for $" + money[currentquestion] + " **");
   console.log("Current Question: " + currentquestion);
   playing = true;
@@ -577,7 +577,7 @@ quizmasteronly.push(channelcmd);
 
 quizmasteronly.push(registerCommand("question", function (message, param) {
   questionGenerated = true;
-  var question = Questions.GetQuestion(currentquestion-1);
+  var question = Questions.GetQuestion();
   var answers = Questions.GetAnswers()
   message.channel.send(question + "\n\n**A**: " + answers[0] + "\n**B**: " + answers[1] + "\n**C**: " + answers[2] + "\n**D**: " + answers[3]);
 }));
@@ -589,7 +589,7 @@ quizmasteronly.push(registerCommand("answer", function (message, param) {
   }
   var answer = ""
   if (questionGenerated) {
-    answer = Questions.getAnswer();
+    answer = Questions.GetAnswer();
   } else{
     answer = param.shift(1);
   }
@@ -611,11 +611,12 @@ quizmasteronly.push(registerCommand("answer", function (message, param) {
 
   client.user.setPresence({ game: { name: 'Tallying answers' }, status: 'dnd' })
 
+  questionchannel.send("The answer was " + answer);
   discordPlayers.forEach(function (player) {
     if (player.member.voiceChannel != voicechannel) {
       return;
     }
-    if (player.member.id == quizmaster.id) {
+    if (player.member.id == quizmaster) {
       return;
     }
     if (!player.final) {
