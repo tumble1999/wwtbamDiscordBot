@@ -638,6 +638,8 @@ registerCommand("help", function (message, param) {
   UpdatePermissions();
   message.reply("\n**Commands**\n```" + getcommandsString(0, message.member) + "```");
 });
+registerCommand("paf", function (message, param) {
+});
 
 registerCommand("avatar", function (message, param) {
   var avatar = param.shift();
