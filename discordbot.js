@@ -2,6 +2,7 @@ const Discord = require('discord.js');
 const client = new Discord.Client();
 const SFXBot = require('./sfx.js');
 const Saving = require('./saving.js');
+const Questions = require('./questions.js');
 
 const DiscordOBJ = require('./discordobj');
 const DiscordServer = DiscordOBJ("server");
@@ -26,6 +27,7 @@ var currentquestion = 0;
 var questionnumber = 15;
 var started = false;
 var playing = false;
+var questionGenerated = false;
 var money = [0,100,200,300,500,1000,2000,4000,8000,16000,32000,64000,125000,250000,500000,1000000];
 var loosemoney = [0,0,0,0,0,1000,1000,1000,1000,1000,32000,32000,32000,32000,32000,32000];
 
@@ -325,6 +327,7 @@ function Start() {
   if (voiceconnection == undefined) {
     return "Please set a voice channel with `!c v`";
   }
+  Questions.GenerateQuestions();
   client.user.setPresence({ game: { name: 'Starting' }, status: 'dnd' })
   started = true;
   currentquestion = 0;
@@ -371,6 +374,7 @@ function End() {
 }
 
 function NextQuestion() {
+  Questions.LoadQuestion();
   questionchannel.send("**Heres the question for $" + money[currentquestion] + " **");
   console.log("Current Question: " + currentquestion);
   playing = true;
@@ -391,6 +395,7 @@ function LetsPlay(message) {
   }
   clearInterval(questionSongInterval);
   playing = false;
+  questionGenerated = false;
   StopSong();
   currentquestion++;
 
@@ -570,12 +575,24 @@ var channelcmd = registerCommand("channel", function (message, param) {
 channelcmd.addAlias("c");
 quizmasteronly.push(channelcmd);
 
+quizmasteronly.push(registerCommand("question", function (message, param) {
+  questionGenerated = true;
+  var question = Questions.GetQuestion(currentquestion-1);
+  var answers = Questions.GetAnswers()
+  message.channel.send(question + "\n\n**A**: " + answers[0] + "\n**B**: " + answers[1] + "\n**C**: " + answers[2] + "\n**D**: " + answers[3]);
+}));
+
 quizmasteronly.push(registerCommand("answer", function (message, param) {
   if (questionchannel == undefined) {
     message.channel.send("Please set a question channel with `!c q`");
     return;
   }
-  var answer = param.shift(1);
+  var answer = ""
+  if (questionGenerated) {
+    answer = Questions.getAnswer();
+  } else{
+    answer = param.shift(1);
+  }
   if (answer == undefined) {
     questionchannel.send("Please specify the correct answer");
     return;

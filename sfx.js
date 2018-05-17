@@ -29,7 +29,7 @@ client.on('ready', () => {
   console.log('I am ready!');
 
   client.guilds.forEach(guild =>{
-    guild.me.setNickname("SFX");
+    //guild.me.setNickname("SFX");
     registerServer(guild);
   });
   module.exports.setAvatar = client.user.setAvatar;
